@@ -1,0 +1,4 @@
+
+interface exec.model.ExecuteTask {
+	void execute(void);
+}

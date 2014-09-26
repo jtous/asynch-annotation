@@ -1,0 +1,5 @@
+primitive pkg.Consumer(MESSAGE) {
+	provides Asynch as in;
+	attribute string msg = MESSAGE; 	
+	source Consumer.c;
+}

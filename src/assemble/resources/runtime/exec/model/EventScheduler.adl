@@ -1,0 +1,6 @@
+primitive exec.model.EventScheduler {
+	provides boot.Main as entryPoint;
+ 	provides RegisterTask as taskIn;
+	requires optional ExecuteTask as taskOut;
+	source EventScheduler.c;
+}

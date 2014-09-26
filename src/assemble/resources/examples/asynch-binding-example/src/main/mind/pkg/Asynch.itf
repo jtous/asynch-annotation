@@ -1,0 +1,4 @@
+
+interface pkg.Asynch {
+	void post(double value);
+}

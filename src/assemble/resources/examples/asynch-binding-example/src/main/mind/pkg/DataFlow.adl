@@ -1,0 +1,17 @@
+@Singleton
+composite pkg.DataFlow {
+	contains boot.Bootstrap as boot;
+	binds boot.entryPoint to scheduler.entryPoint;
+	contains exec.model.EventScheduler as scheduler;
+	contains Producer("Full rate value is : ") as producer;
+	binds producer.decimationFactor to decimator.factor;
+	binds producer.out to fullRateMax.in;
+	contains MaximumLogger("Full rate Maximum value is : ") as fullRateMax;
+	binds fullRateMax.out to decimator.fullRate;
+	contains Decimator as decimator;
+	binds decimator.decimated to decimatedMax.in;
+	contains MaximumLogger("Decimated Maximum value is : ") as decimatedMax;
+	binds decimatedMax.out to consumer.in;
+	contains Consumer("Decimated value is : ") as consumer;
+	
+}

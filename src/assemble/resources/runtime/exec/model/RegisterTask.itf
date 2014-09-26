@@ -1,0 +1,4 @@
+@ImportIDL({"exec.model.ExecuteTask"})
+interface exec.model.RegisterTask {
+	void registerIn(exec_model_ExecuteTask taskItf);
+}

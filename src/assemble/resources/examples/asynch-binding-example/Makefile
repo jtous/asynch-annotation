@@ -1,0 +1,206 @@
+# If the MIND_ROOT variable is defined, look for 'mindc' and 'mindunit' in this directory
+# otherwise, expect that 'mindc' and 'mindunit' are in the PATH.
+ifdef MIND_ROOT
+  # If MIND_ROOT contains '\', replace them by '/' (for Windows)
+  MINDC = $(subst \,/, $(MIND_ROOT)/bin/mindc)
+  MINDUNIT = $(subst \,/, $(MIND_ROOT)/bin/mindunit)
+  MINDOC = $(subst \,/, $(MIND_ROOT)/bin/mindoc)
+else 
+  MINDC = mindc
+  MINDUNIT = mindunit
+  MINDOC = mindoc
+endif
+
+# Non-MindEd users should invoke this Makefile using "make CONFIGURATION=<configName> all" to run the build,
+# where <configName> matches the desired <configName>.properties file.
+# Set CONFIGURATION to Default if not set
+
+CONFIGURATION ?= Default
+include $(CONFIGURATION).properties
+
+confOutputDirVar=target/$(CONFIGURATION)
+
+binOutputDir=$(confOutputDirVar)/binaries
+depsOutputDir=$(confOutputDirVar)/dependencies
+docOutputDir=$(confOutputDirVar)/doc
+graphOutputDir=$(confOutputDirVar)/graph
+testBinOutputDir=$(confOutputDirVar)/test-binaries
+testDocOutputDir=$(confOutputDirVar)/test-doc
+
+# Strings and comments management - Skip to "all:" for the real build.
+
+#Platform Separator handling
+PATH_SEPARATOR =:
+ifneq (,$(findstring Windows, $(OS))) # Handle Windows-specific separators (':' otherwise)
+    PATH_SEPARATOR =;
+endif
+
+sourcePathArg=
+ifdef sourcePath
+	ifneq ($(sourcePath), "")
+		sourcePathArg=--src-path="$(subst :,$(PATH_SEPARATOR),$(subst ::,:,$(sourcePath):$(depsOutputDir)))"
+	endif
+endif
+
+testSourcePathArg=
+ifdef testSourcePath
+	ifneq ($(sourcePath), "")
+		testSourcePathArg="$(subst :,$(PATH_SEPARATOR),$(subst ::,:,$(testSourcePath)))"
+	endif
+endif
+
+includePathArg=
+ifdef includePath
+	ifneq ($(includePath), "")
+		includePathArg=--inc-path="$(subst :,$(PATH_SEPARATOR),$(subst ::,:,$(includePath)))"
+	endif
+endif
+
+compilerCommandArg=
+ifdef compilerCommand
+	ifneq ($(compilerCommand), "")
+		compilerCommandArg=--compiler-command="$(compilerCommand)"
+	endif
+endif
+
+linkerCommandArg=
+ifdef linkerCommand
+	ifneq ($(linkerCommand), "")
+		linkerCommandArg=--linker-command="$(linkerCommand)"
+	endif
+endif
+
+assemblerCommandArg=
+ifdef assemblerCommand
+	ifneq ($(assemblerCommand), "")
+		assemblerCommandArg=--assembler-command="$(assemblerCommand)"
+	endif
+endif
+
+asFlagsArg=
+ifdef asFlags
+	ifneq ($(asFlags), "")
+		asFlagsArg=--as-flags="$(asFlags)"
+	endif
+endif
+
+cppFlagsArg=
+ifdef cppFlags
+	ifneq ($(cppFlags), "")
+		cppFlagsArg=--cpp-flags="$(cppFlags)"
+	endif
+endif
+
+cFlagsArg=
+ifdef cFlags
+	ifneq ($(cFlags), "")
+		cFlagsArg=--c-flags="$(cFlags)"
+	endif
+endif
+
+ldFlagsArg=
+ifdef ldFlags
+	ifneq ($(ldFlags), "")
+		ldFlagsArg=--ld-flags="$(ldFlags)"
+	endif
+endif
+
+extraOptionsArg=
+ifdef extraOptions
+	ifneq ($(extraOptions), "")
+		extraOptionsArg=$(extraOptions)
+	endif
+endif
+
+testExtraOptionsArg=
+ifdef testExtraOptions
+	ifneq ($(testExtraOptions), "")
+		testExtraOptionsArg=$(testExtraOptions)
+	endif
+endif
+
+
+
+# folder utilities
+empty=
+space= $(empty) $(empty)
+# if MIND_ROOT is not defined, 'runtime' folder components such as the Bootstrap or the Main interface
+# will not be documented and this can lead to broken links. Within MindEd, MIND_ROOT should always be
+# automatically defined. However, for common builds from the terminal, you should define it or at least
+# do a dry run of "mindc" once for MIND_ROOT to be defined for the terminal session. 
+RUNTIME_PATH=$(subst \,/,$(MIND_ROOT))/runtime
+
+# The real build command.
+
+all: compile graph doc test  
+
+clean_all: clean clean_dependencies clean_graph clean_doc clean_test
+
+dependencies: build_dependencies
+# Add 'cp' commands here to copy your project dependencies files to depsOutputDir
+
+compile: build dependencies 
+ifdef targetComponent
+	if test ! -x $(MINDC); \
+        then echo ' Not found mindc ! Set MIND_ROOT variable or go to 'Mindc location' eclipse preference page'; \
+    	else $(MINDC) $(sourcePathArg) $(includePathArg) $(compilerCommandArg) $(linkerCommandArg) $(assemblerCommandArg) $(asFlagsArg) $(cppFlagsArg) $(cFlagsArg) $(ldFlagsArg) $(extraOptionsArg) -o=$(binOutputDir) $(targetComponent):$(binaryName) ;\
+    fi
+else
+	echo "No application defined - MindEd users: Please configure your project target with the 'Mind Path' -> (right click) 'New application' menu."
+endif
+
+graph: build_graph
+ifdef targetComponent
+	if test ! -x $(MINDC); \
+        then echo ' Not found mindc ! Set MIND_ROOT variable or go to 'Mindc location' eclipse preference page'; \
+    	else $(MINDC) --check-adl $(sourcePathArg) $(includePathArg) -o=$(graphOutputDir) 'dot.DumpComponentDot<'$(targetComponent)'>' ;\
+    fi
+else
+	echo "No application defined - MindEd users: Please configure your project target with the 'Mind Path' -> (right click) 'New application' menu."
+endif
+
+doc: build_doc
+	$(MINDOC) $(sourcePathArg) -S=$(RUNTIME_PATH) -o=$(docOutputDir)
+
+# here we reuse the same flags as the common build ones
+test: build_test
+	$(MINDUNIT) $(sourcePathArg) $(includePathArg) $(compilerCommandArg) $(linkerCommandArg) $(assemblerCommandArg) $(asFlagsArg) $(cppFlagsArg) $(cFlagsArg) $(ldFlagsArg) $(extraOptionsArg) $(testExtraOptionsArg) -o=$(testBinOutputDir) $(testSourcePathArg)
+
+# Output folder handling.
+
+build:
+	mkdir -p $(binOutputDir)
+
+build_dependencies:
+	mkdir -p $(depsOutputDir)
+
+build_doc:
+	mkdir -p $(docOutputDir)
+
+build_test:
+	mkdir -p $(testBinOutputDir)
+
+build_graph:
+	mkdir -p $(graphOutputDir)
+
+clean:
+	rm -Rf $(binOutputDir); \
+	mkdir -p $(binOutputDir)
+
+clean_dependencies:
+	rm -Rf $(depsOutputDir); \
+	mkdir -p $(depsOutputDir)
+
+clean_doc:
+	rm -Rf $(docOutputDir); \
+	mkdir -p $(docOutputDir)
+
+clean_test:
+	rm -Rf $(testBinOutputDir); \
+	mkdir -p $(testBinOutputDir)
+
+clean_graph:
+	rm -Rf $(graphOutputDir); \
+	mkdir -p $(graphOutputDir)
+
+.PHONY: all clean build

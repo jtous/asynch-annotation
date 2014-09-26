@@ -1,0 +1,4 @@
+
+interface pkg.Synch {
+ uint32_t setAndCheck(uint32_t value);
+}

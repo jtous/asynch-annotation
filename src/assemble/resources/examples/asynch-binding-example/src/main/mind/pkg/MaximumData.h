@@ -1,0 +1,3 @@
+struct {
+	double maxValue;
+} PRIVATE;

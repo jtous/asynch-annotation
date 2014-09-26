@@ -1,0 +1,4 @@
+primitive pkg.Main {
+	provides boot.Main as entryPoint; 	
+	source Main.c;
+}

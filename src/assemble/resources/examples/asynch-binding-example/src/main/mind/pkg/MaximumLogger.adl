@@ -1,0 +1,7 @@
+primitive pkg.MaximumLogger(MESSAGE) {
+	provides Asynch as in;
+	requires Asynch as out;
+ 	attribute string msg = MESSAGE;
+	source Maximum.c;
+	data MaximumData.h;
+}

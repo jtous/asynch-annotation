@@ -1,0 +1,7 @@
+primitive pkg.Decimator {
+	provides Synch as factor;
+ 	provides Asynch as fullRate;
+ 	requires Asynch as decimated;
+	source Decimator.c;
+	data DecimatorData.h;
+}

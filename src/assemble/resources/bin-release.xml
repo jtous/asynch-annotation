@@ -1,0 +1,38 @@
+<assembly>
+    <id>bin</id>
+    <formats>
+        <format>zip</format>
+        <format>tar.gz</format>
+        <format>tar.bz2</format>
+    </formats>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <dependencySets>
+<!-- remove the includes and add the excludes just in the following dependencySet to build a self-contained distribution -->
+        <dependencySet>
+            <outputDirectory>ext</outputDirectory>
+            <includes>
+                <include>${project.groupId}:asynch-annotation</include>
+            </includes>
+            <!--excludes>
+                <exclude>${project.groupId}:fractal-runtime</exclude>
+            </excludes-->
+            <fileMode>0644</fileMode>
+        </dependencySet>
+    </dependencySets>
+    <fileSets>
+        <fileSet>
+            <directory>src/assemble/resources/examples</directory>
+            <outputDirectory>examples</outputDirectory>
+        </fileSet>
+		<fileSet>
+			<directory>src/assemble/resources/runtime</directory>
+			<outputDirectory>runtime</outputDirectory>
+	</fileSets>
+    <!--files>
+        <file>
+            <source>target/site/asynch-annotation.pdf</source>
+            <fileMode>0644</fileMode>
+            <outputDirectory>doc</outputDirectory>
+        </file>
+    </files-->
+</assembly>

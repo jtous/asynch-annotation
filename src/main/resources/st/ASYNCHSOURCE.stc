@@ -1,0 +1,159 @@
+template st.ASYNCHSOURCE : st.interfaces.IDL2C{
+  $${
+
+/**
+ * Copyright (C) 2014 Schneider-Electric
+ *
+ * This file is part of "Mind Compiler" is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU Lesser General Public License 
+ * as published by the Free Software Foundation, either version 3 of the 
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT 
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Contact: mind@ow2.org
+ *
+ * Authors: Julien Tous
+ * Contributors: 
+ */
+
+isClient ::= [ "client" : "true" ]
+isServer ::= [ "server" : "true" ]
+
+/** 
+ * Generates a ".c" file.
+ */
+ 
+ 
+InterceptedServerDefinition(interfaceDefinition, srvName, cltName) ::= <<
+
+#define nextStartIndex() ((PRIVATE.mBuf.start + 1) % PRIVATE.mBuf.size)
+#define nextEndIndex() ((PRIVATE.mBuf.end + 1) % PRIVATE.mBuf.size)
+#define isBufferEmpty() (PRIVATE.mBuf.end == PRIVATE.mBuf.start)
+#define isBufferFull() (nextEndIndex() == PRIVATE.mBuf.start)
+#define bufferWrite(ELEM) \
+		PRIVATE.mBuf.buf[PRIVATE.mBuf.end] = ELEM; \
+		PRIVATE.mBuf.end = (PRIVATE.mBuf.end + 1) % PRIVATE.mBuf.size; \
+		if (isBufferEmpty()) { \
+			PRIVATE.mBuf.start = nextStartIndex(); \
+		}
+#define bufferRead(ELEM) \
+		ELEM = PRIVATE.mBuf.buf[PRIVATE.mBuf.start]; \
+		PRIVATE.mBuf.start = nextStartIndex();
+
+<interfaceDefinition.methods:{<InterceptorServerMethod(interfaceDefinition=interfaceDefinition, srvName=srvName, method=it)>};separator="\n\n">
+
+<InterceptorClientExecution(interfaceDefinition=interfaceDefinition, cltName=cltName)>
+
+CONSTRUCTOR() {
+	PRIVATE.mBuf.size = BUFFER_SIZE +1;
+	PRIVATE.mBuf.start = 0;
+	PRIVATE.mBuf.end = 0;
+}
+
+>>
+
+// -----------------------------------------------------------------------------
+// Internal templates
+// -----------------------------------------------------------------------------
+
+InterceptorServerMethod(interfaceDefinition, srvName, cltName, method) ::= <<
+<if(method.vaArgs)>
+<mindMethDef(itfName=srvName, method=method)> {
+#error va_args not supported on asynchronous call.
+<else>
+<mindMethDef(itfName=srvName, method=method)> {
+<if (!(isVoidMethod(method=method)))>
+#error Non void return not supported on asynchronous call.
+<endif>
+   	<interfaceDefinition.name;format="pathToCName">_marchaled_t tmp;
+	if (!isBufferFull()){
+		tmp.meth = <method.name>;
+		bufferWrite(tmp);
+	}
+	<method.parameters:paramToBuff(method=method, param=it);separator="\n">
+	CALL(push,registerIn)( GET_MY_INTERFACE(pop));
+	return;    
+<endif>
+
+}
+>>
+
+//<methCall(itfName=cltName,method=method)>;
+InterceptorClientExecution( interfaceDefinition, cltName) ::= <<
+void METH(pop, execute)(void) {
+   	<interfaceDefinition.name;format="pathToCName">_marchaled_t tmp[20];
+	if (!isBufferEmpty()) {
+		bufferRead(tmp[0]);
+		switch (tmp[0].meth) {
+		<interfaceDefinition.methods:{<buffToCall(method=it)>};separator="\n">
+		default:
+			break;
+		}
+	}
+}
+>>
+
+buffToCall(method) ::= <<
+case <method.name>:
+	<paramsRead(method=method)>;
+	CALL(c,<method.name>)(<paramList(method=method)>);
+	break;
+>>
+
+paramsRead(method) ::= <<
+<method.parameters:{if (!isBufferEmpty()) { bufferRead(tmp[<i>]); } else { break; } };separator="\n">
+>>
+paramList(method) ::= <<
+<method.parameters:{tmp[<i>].<method.name>_<parameterName(it)>}; separator=", ">
+>>
+
+paramToBuff(method,param) ::= <<
+if (!isBufferFull()){
+	tmp.<method.name>_<parameterName(param)> = <parameterName(param)>;
+	bufferWrite(tmp);
+}
+>>
+
+dualMethPrototype(name, parameters) ::= <<
+<name>(<parameters:parameterDef(parameter=it); separator=", ">, va_list param_list)
+>>
+
+ServerInterfacesWrapper(definition, interfaceDefinitions, itf) ::= <<
+<if (isServer.(itf.role))>
+<if (itf.numberOfElement)>
+//FIXME collection interface
+//<itf.astDecorations.("collectionIndexes"):CollectionServerMethodsWrapper(definition=definition, interfaceDefinitions=interfaceDefinitions, itf=itf, index=it);separator="\n">
+<else>
+<interfaceDefinitions.(itf.signature).methods:ServerMethodsWrapper(definition=definition, itf=itf, method=it)>
+<endif>
+<endif>
+>>
+
+mindMethDef(itfName, method) ::= <<
+<typeQualifier(qualifiers=method)><varDef(type=method.type, name=mindMethodSignature(itfName = itfName, method=method))>
+>>
+
+mindMethodSignature(itfName, method) ::= <<
+METH(<itfName>, <method.name>)(<if(method.parameters)>
+<method.parameters:parameterDef(parameter=it); separator=", "><if (method.vaArgs)>, ...<endif>
+<else>
+void
+<endif>)
+>>
+
+
+methCall(itfName,method) ::= <<
+CALL(<itfName>,<method.name>)(<method.parameters:parameterName(parameter=it); separator=", ">)
+>>
+
+
+  }$$
+}
+  

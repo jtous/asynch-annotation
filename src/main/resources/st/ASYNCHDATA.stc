@@ -1,0 +1,66 @@
+template st.ASYNCHDATA : st.interfaces.IDL2C{
+  $${
+
+/**
+ * Copyright (C) 2014 Schneider-Electric
+ *
+ * This file is part of "Mind Compiler" is free software: you can redistribute 
+ * it and/or modify it under the terms of the GNU Lesser General Public License 
+ * as published by the Free Software Foundation, either version 3 of the 
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT 
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Contact: mind@ow2.org
+ *
+ * Authors: Julien Tous
+ * Contributors: 
+ */
+
+isClient ::= [ "client" : "true" ]
+isServer ::= [ "server" : "true" ]
+
+/** 
+ * Generates a ".c" header file.
+ */
+
+PrivateDataDeclaration(interfaceDefinition) ::= <<
+
+#define BUFFER_SIZE 256
+
+typedef enum {
+<interfaceDefinition.methods:{<it.name>}; separator = ",\n">
+} <interfaceDefinition.name;format="pathToCName">_meth_t;
+
+typedef union{
+	<interfaceDefinition.name;format="pathToCName">_meth_t meth;
+	<interfaceDefinition.methods:enumMethParam(method=it);separator = ";\n">;
+} <interfaceDefinition.name;format="pathToCName">_marchaled_t;
+
+typedef struct {
+int size;
+int start;
+int end;
+<interfaceDefinition.name;format="pathToCName">_marchaled_t buf[BUFFER_SIZE];
+} <interfaceDefinition.name;format="pathToCName">_marchaled_buffer_t;
+
+struct {
+	<interfaceDefinition.name;format="pathToCName">_marchaled_buffer_t mBuf;
+	
+} PRIVATE;
+
+>>
+
+enumMethParam(method) ::= <<
+<method.parameters:{<typeQualifier(qualifiers=it)><varDef(type=it.type, name={<method.name>_<parameterName(it)>})>};separator = ";\n">;
+>>
+
+  }$$
+}
+  

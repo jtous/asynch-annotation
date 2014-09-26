@@ -1,0 +1,7 @@
+@Singleton
+primitive pkg.Producer(MESSAGE) {
+	attribute string msg = MESSAGE; 	
+	requires Synch as decimationFactor;
+ 	requires Asynch as out;
+	source Producer.c;
+}
