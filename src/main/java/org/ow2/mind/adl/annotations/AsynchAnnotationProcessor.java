@@ -217,6 +217,7 @@ AbstractADLLoaderAnnotationProcessor {
 		//Creating the definition
 		interceptorDefRef = ASTHelper.newDefinitionReference(nodeFactory, interceptorCompName);
 		interceptorDef = ASTHelper.newPrimitiveDefinitionNode(nodeFactory, interceptorCompName, interceptorDefRef);
+		ASTHelper.setResolvedDefinition(interceptorDefRef, interceptorDef);
 		
 		//Creating an interface with the same signature as the annotated one
 		interceptorClt = ASTHelper.newClientInterfaceNode(nodeFactory, "c", itfDef.getName());
