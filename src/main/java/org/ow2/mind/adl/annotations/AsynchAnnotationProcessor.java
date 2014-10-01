@@ -76,7 +76,7 @@ AbstractADLLoaderAnnotationProcessor {
 
 	@Inject
 	protected IDLLocator   idlLocator;
-	
+
 	@Inject
 	protected IDLLoader idlLoader;
 
@@ -87,13 +87,13 @@ AbstractADLLoaderAnnotationProcessor {
 	protected static final String ASYNCH_DATA_TEMPLATE_NAME  = "st.ASYNCHDATA";
 	//String template that holds the source code of the to be created component
 	protected static final String ASYNCH_SOURCE_TEMPLATE_NAME = "st.ASYNCHSOURCE";
-	
+
 	protected DefinitionReference interceptorDefRef = null;
 	protected Definition interceptorDef = null;
 	protected MindInterface interceptorSrv;
 	protected MindInterface interceptorClt;
 	protected MindInterface interceptorEventClt;
-	
+
 	/**
 	 *	Create a interceptor component between source and destination of an asynch binding.
 	 */
@@ -102,65 +102,83 @@ AbstractADLLoaderAnnotationProcessor {
 			final Map<Object, Object> context) throws ADLException {
 		assert annotation instanceof Asynch;
 		final Asynch asynchAnnotation = (Asynch) annotation;
-		
+
 		if (node instanceof Binding){
 			final Binding asynchBinding = (Binding) node;
 			final String clientCompName = asynchBinding.getFromComponent();
 			Component clientComp = null;
 			final String serverCompName = asynchBinding.getToComponent();
 			Component serverComp = null;
-			final String schedulerCompName = asynchAnnotation.scheduler;
-			Component schedulerComp = null;
-			Component[] comps = ((ComponentContainer)definition).getComponents();
 
-			if (comps != null) {
-				for (Component comp : comps){
-					if (comp.getName().equals(clientCompName)){
-						clientComp = comp;
-					} else if (comp.getName().equals(serverCompName)){
-						serverComp = comp;
-					} else if  (comp.getName().equals(schedulerCompName)){
-						schedulerComp = comp;
+			if (asynchAnnotation.taskQueue != null){
+				int dotIndex = asynchAnnotation.taskQueue.indexOf('.');
+				final String schedulerCompName = asynchAnnotation.taskQueue.substring(0, dotIndex);
+				final String schedulerItfName = asynchAnnotation.taskQueue.substring(dotIndex+1);
+				Component schedulerComp = null;
+				Interface schedulerItf = null;
+				
+				Component[] comps = ((ComponentContainer)definition).getComponents();
+
+				if (comps != null) {
+					for (Component comp : comps){
+						if (comp.getName().equals(clientCompName)){
+							clientComp = comp;
+						} else if (comp.getName().equals(serverCompName)){
+							serverComp = comp;
+						} else if  (comp.getName().equals(schedulerCompName)){
+							schedulerComp = comp;
+						}
 					}
 				}
-			}
-			
-			//TODO somehow assert both serverComp and clientComp are populated
 
-			Definition clientCompDef = ASTHelper.getResolvedComponentDefinition(clientComp, loaderItf, context);
-			Definition serverCompDef = ASTHelper.getResolvedComponentDefinition(serverComp, loaderItf, context);		
-			
-			final String clientItfName = asynchBinding.getFromInterface();
-			Interface clientItf = null;
-			final String serverItfName = asynchBinding.getToInterface();
-			Interface serverItf = null;
+				//TODO somehow assert both serverComp and clientComp are populated
 
-			Interface[] itfs = ((InterfaceContainer)clientCompDef).getInterfaces();
-			if (itfs != null){
-				for (Interface itf : itfs){
-					if (itf.getName().equals(clientItfName)) {
-						clientItf = (Interface) itf;
-						break;
-					} 
-				}
-			}
-			
-			itfs = ((InterfaceContainer)serverCompDef).getInterfaces();
-			if (itfs != null){
-				for (Interface itf : itfs){
-					if (itf.getName().equals(serverItfName)) {
-						serverItf = (Interface) itf;
-						break;
+				Definition clientCompDef = ASTHelper.getResolvedComponentDefinition(clientComp, loaderItf, context);
+				Definition serverCompDef = ASTHelper.getResolvedComponentDefinition(serverComp, loaderItf, context);		
+				Definition schedulerCompDef = ASTHelper.getResolvedComponentDefinition(schedulerComp, loaderItf, context);
+				
+				final String clientItfName = asynchBinding.getFromInterface();
+				Interface clientItf = null;
+				final String serverItfName = asynchBinding.getToInterface();
+				Interface serverItf = null;
+				Interface[] itfs;
+				itfs = ((InterfaceContainer)clientCompDef).getInterfaces();
+				if (itfs != null){
+					for (Interface itf : itfs){
+						if (itf.getName().equals(clientItfName)) {
+							clientItf = (Interface) itf;
+							break;
+						} 
 					}
 				}
-			}
 
-			//TODO somehow assert both serverItf and clientItf are populated
+				itfs = ((InterfaceContainer)serverCompDef).getInterfaces();
+				if (itfs != null){
+					for (Interface itf : itfs){
+						if (itf.getName().equals(serverItfName)) {
+							serverItf = (Interface) itf;
+							break;
+						}
+					}
+				}
+				
+				itfs = ((InterfaceContainer)schedulerCompDef).getInterfaces();
+				if (itfs != null){
+					for (Interface itf : itfs){
+						if (itf.getName().equals(schedulerItfName)) {
+							schedulerItf = (Interface) itf;
+							break;
+						}
+					}
+				}
 
-			final Asynch thisAnnotation = AnnotationHelper.getAnnotation(asynchBinding,	Asynch.class);
-			if (thisAnnotation == asynchAnnotation) {
-				((BindingContainer) definition).removeBinding(asynchBinding);
-				insertInterceptorComp(clientItf, serverItf, clientComp, serverComp, schedulerComp, definition, context);
+				//TODO somehow assert both serverItf and clientItf are populated
+
+				final Asynch thisAnnotation = AnnotationHelper.getAnnotation(asynchBinding,	Asynch.class);
+				if (thisAnnotation == asynchAnnotation) {
+					((BindingContainer) definition).removeBinding(asynchBinding);
+					insertInterceptorComp(clientItf, serverItf, schedulerItf, clientComp, serverComp, schedulerComp, definition, context);
+				}
 			}
 		}
 		return null;
@@ -169,7 +187,7 @@ AbstractADLLoaderAnnotationProcessor {
 	/**
 	 * @throws ADLException 
 	 */
-	private void insertInterceptorComp(final Interface clientItf, final Interface serverItf,
+	private void insertInterceptorComp(final Interface clientItf, final Interface serverItf, final Interface schedulerItf,
 			final Component clientComp, final Component serverComp, final Component schedulerComp, final Definition definition,
 			final Map<Object, Object> context) throws ADLException {
 		final InterfaceDefinition itfDef = itfSignatureResolverItf.resolve((TypeInterface) clientItf, definition, context);
@@ -181,7 +199,7 @@ AbstractADLLoaderAnnotationProcessor {
 
 		//Creating a definition for our interceptor
 		createInterceptorDefinition(itfDef,interceptorCompName, context);
-		
+
 		//Instantiating and adding a the interceptor-component 
 		final Component interceptorComp = ASTHelper.newComponent(nodeFactory, interceptorCompInstName, interceptorDefRef);
 		ASTHelper.setResolvedComponentDefinition(interceptorComp, interceptorDef);
@@ -192,7 +210,7 @@ AbstractADLLoaderAnnotationProcessor {
 		schedBinding.setFromComponent(interceptorComp.getName());
 		schedBinding.setToComponent(schedulerComp.getName());
 		schedBinding.setFromInterface(interceptorEventClt.getName());
-		schedBinding.setToInterface("taskIn");
+		schedBinding.setToInterface(schedulerItf.getName());
 		((BindingContainer) definition).addBinding(schedBinding);
 
 		//Creating, configuring and adding a binding between our new interceptor-component instance and server interface
@@ -218,7 +236,7 @@ AbstractADLLoaderAnnotationProcessor {
 		interceptorDefRef = ASTHelper.newDefinitionReference(nodeFactory, interceptorCompName);
 		interceptorDef = ASTHelper.newPrimitiveDefinitionNode(nodeFactory, interceptorCompName, interceptorDefRef);
 		ASTHelper.setResolvedDefinition(interceptorDefRef, interceptorDef);
-		
+
 		//Creating an interface with the same signature as the annotated one
 		interceptorClt = ASTHelper.newClientInterfaceNode(nodeFactory, "c", itfDef.getName());
 		final TypeInterface interceptorCltType = interceptorClt;
@@ -228,7 +246,7 @@ AbstractADLLoaderAnnotationProcessor {
 		interceptorSrv = ASTHelper.newServerInterfaceNode(nodeFactory, "s", itfDef.getName());
 		final TypeInterface interceptorSrvType = interceptorSrv;
 		InterfaceDefinitionDecorationHelper.setResolvedInterfaceDefinition(interceptorSrvType, itfDef);
-		
+
 		//Creating an interface to the scheduler
 		final String registerTaskItfName = "exec.model.RegisterTask";
 		InterfaceDefinition registerTaskItfDef = (InterfaceDefinition) idlLoader.load(registerTaskItfName, context);
@@ -242,13 +260,13 @@ AbstractADLLoaderAnnotationProcessor {
 		final MindInterface eventSrv = ASTHelper.newServerInterfaceNode(nodeFactory, "pop", executeTaskItfName);
 		final TypeInterface eventSrvType = eventSrv;
 		InterfaceDefinitionDecorationHelper.setResolvedInterfaceDefinition(eventSrvType, executeTaskItfDef);
-		
+
 		//Adding the newly created interfaces to the interceptor definition
 		((InterfaceContainer) interceptorDef).addInterface(interceptorClt);
 		((InterfaceContainer) interceptorDef).addInterface(interceptorSrv);
 		((InterfaceContainer) interceptorDef).addInterface(eventCltType);
 		((InterfaceContainer) interceptorDef).addInterface(eventSrv);
-		
+
 		//Creating private data for our interceptor
 		final StringBuilder dataCode = new StringBuilder();
 		final StringTemplate dataST = getTemplate(ASYNCH_DATA_TEMPLATE_NAME,"PrivateDataDeclaration");
@@ -270,7 +288,7 @@ AbstractADLLoaderAnnotationProcessor {
 		final Source src = ASTHelper.newSource(nodeFactory);
 		((ImplementationContainer) interceptorDef).addSource(src);
 		src.setCCode(sourceCode.toString());	
-		
+
 		return interceptorDef;
 	} 
 }

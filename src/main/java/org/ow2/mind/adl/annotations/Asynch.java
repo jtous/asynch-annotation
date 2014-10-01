@@ -46,7 +46,7 @@ public class Asynch implements Annotation {
 	}
 
 	@AnnotationElement(hasDefaultValue=true)
-	public String scheduler="scheduler";
+	public String taskQueue=null;
 	
 	public boolean isInherited() {
 		return false;

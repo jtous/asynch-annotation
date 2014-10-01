@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mindpath>
-	<mindpathentry kind="SOURCE" path="/asynch-binding-example/src"/>
 	<mindpathentry kind="SOURCE" path="/asynch-binding-example/runtime"/>
+	<mindpathentry kind="SOURCE" path="/asynch-binding-example/src/main/mind"/>
+	<mindpathentry kind="SOURCE" path="/asynch-binding-example/src/test/mind"/>
 </mindpath>

@@ -1,13 +1,13 @@
 composite pkg.DataFlow {
-	@Asynch(scheduler="scheduler")
+	@Asynch(taskQueue="scheduler.taskIn")
 	binds producer.out to fullRateMax.in;
 
-	@Asynch(scheduler="scheduler")
+	@Asynch(taskQueue="scheduler.taskIn")
 	binds fullRateMax.out to decimator.fullRate;
 
-	@Asynch(scheduler="scheduler")
+	@Asynch(taskQueue="scheduler.taskIn")
 	binds decimator.decimated to decimatedMax.in;
 
-	@Asynch(scheduler="scheduler")
+	@Asynch(taskQueue="scheduler.taskIn")
 	binds decimatedMax.out to consumer.in;
 }
