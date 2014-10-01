@@ -27,6 +27,7 @@
 		<fileSet>
 			<directory>src/assemble/resources/runtime</directory>
 			<outputDirectory>runtime</outputDirectory>
+        </fileSet>
 	</fileSets>
     <!--files>
         <file>
